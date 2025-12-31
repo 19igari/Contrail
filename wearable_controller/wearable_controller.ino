@@ -1,5 +1,8 @@
 #include <Wire.h>
 #include "src/bno055/bno055_support.h"
+#include "src/drv2605/drv2605.h"
+
+Adafruit_DRV2605 drv;
 
 void setup() {
   Serial.begin(115200);
@@ -14,11 +17,22 @@ void setup() {
     while (1) delay(1000);
   }
   Serial.println("BNO055 ready.");
+
+  if (! drv.begin(&Wire)) {
+    Serial.println("Could not find DRV2605");
+    while (1) delay(1000);
+  }
+
+  pinMode(0, OUTPUT);
+  digitalWrite(0, HIGH);
+
+  drv.useERM();
+  drv.selectLibrary(1);
+  drv.setMode(DRV2605_MODE_INTTRIG);
 }
 
 void loop() {
   struct bno055_accel_t acc; // x,y,z は s16
-
   if (bno055_read_accel_xyz(&acc) == 0) {
     // Bosch APIのACC_DATAは通常 1 LSB = 1 mg
     const float ax_g = acc.x / 1000.0f;
@@ -36,4 +50,14 @@ void loop() {
   }
 
   delay(50);
+
+  // set the effect to play
+  Serial.println("vibrating");
+  drv.setWaveform(0, 1);  // play effect 
+  drv.setWaveform(1, 0);       // end waveform
+  drv.go();
+
+  while (drv.readRegister8(DRV2605_REG_GO) & 0x01) {
+    delay(2);
+  }
 }
